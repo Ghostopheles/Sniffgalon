@@ -26,7 +26,7 @@ dump_raw = True
 dump_processed = True
 
 # to disable dumping of any of the below things, just comment the line out
-achievements.get_all_achievements_for_all_categories(dump_raw, dump_processed)
+achievements.get_all_achievements(dump_raw, dump_processed)
 mounts.get_mounts_index(dump_raw, dump_processed)
 titles.get_titles_index(dump_raw, dump_processed)
 toys.get_toys_index(dump_raw, dump_processed)
