@@ -4,6 +4,7 @@ from Shared import *
 class AchievementDumper(BaseDumper):
     def __init__(self):
         super().__init__(name="Achievements")
+        self.all_achievements = []
 
     def get_achievement_categories_index(
         self, dump_raw: bool = False, dump_processed: bool = False
@@ -66,6 +67,9 @@ class AchievementDumper(BaseDumper):
                 )
                 dump_csv(path, processed_data)
 
+            for achievement in processed_data:
+                self.all_achievements.append(achievement)
+
             return processed_data
 
     def get_all_achievements_for_all_categories(
@@ -98,8 +102,16 @@ class AchievementDumper(BaseDumper):
 
         return all_achievements
 
+    def get_all_achievements(
+        self, dump_raw: bool = False, dump_processed: bool = False
+    ):
+        self.get_all_achievements_for_all_categories(
+            dump_raw=dump_raw, dump_processed=dump_processed
+        )
+        file_name = f"{self.dump_path}/Processed/Achievements_All.csv"
+        dump_csv(file_name, self.all_achievements)
+
 
 if __name__ == "__main__":
     dumper = AchievementDumper()
-
-    dumper.get_all_achievements_for_all_categories(dump_raw=True, dump_processed=True)
+    dumper.get_all_achievements(dump_raw=True, dump_processed=True)
