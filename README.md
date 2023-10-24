@@ -13,5 +13,5 @@ Install requirements with `pip install -r requirements.txt`, then run [Sniffer/M
 
 ## Advanced Usage
 
-All of the dumpers share the same base class (defined in [Sniffer/Dumper/Shared.py](https://github.com/Ghostopheles/Sniffgalon/blob/master/Sniffer/Dumper/Shared.py)) and contain functions for fetching specific IDs or a list of IDs.
-* Currently only Achievements supports this behavior, will expand to the other areas in the future.
+All of the dumpers share the same base class (defined in [Sniffer/Dumper/Shared.py](https://github.com/Ghostopheles/Sniffgalon/blob/master/Sniffer/Dumper/Shared.py)) and contain `fetch_specific` and `fetch_many` functions for fetching a specific ID or a list of IDs.
+* Currently only the achievements dumper supports this behavior, will expand to the other areas in the future. See [Sniffer/Dumper/Achievements.py](https://github.com/Ghostopheles/Sniffgalon/blob/master/Sniffer/Dumper/Achievements.py) for an example of how it's set up.
