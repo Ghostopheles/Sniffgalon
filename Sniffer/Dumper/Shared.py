@@ -4,11 +4,12 @@ import json
 import httpx
 import logging
 
-from datetime import datetime
-from sys import version as SYS_VERSION
-from dotenv import load_dotenv
 from enum import StrEnum
 from base64 import b64encode
+from datetime import datetime
+from dotenv import load_dotenv
+from dataclasses import asdict
+from sys import version as SYS_VERSION
 from logging.handlers import TimedRotatingFileHandler
 
 timestamp = datetime.now().strftime("%Y-%m-%d")
@@ -41,7 +42,7 @@ __logger.info(f"Using Python version {SYS_VERSION}")
 
 load_dotenv()
 
-API_URL = "https://us.api.blizzard.com"
+API_URL = "https://us.api.blizzard.com/data/wow"
 API_TOKEN_URL = "https://us.battle.net/oauth/token"
 
 # grabs your blizzard API ID and secret from the .env file (placed in the base directory, above Sniffer/)
@@ -58,6 +59,14 @@ class BattleNetNamespace(StrEnum):
     STATIC = "static-us"
     DYNAMIC = "dynamic-us"
     PROFILE = "profile-us"
+
+    STATIC_ERA = "static-classic1x-us"
+    DYNAMIC_ERA = "dynamic-classic1x-us"
+    PROFILE_ERA = "profile-classic1x-us"
+
+    STATIC_LK = "static-classic-us"
+    DYNAMIC_LK = "dynamic-classic-us"
+    PROFILE_LK = "profile-classic-us"
 
 
 def get_access_token() -> str:
@@ -136,15 +145,121 @@ def compress_generic_dict(data: list) -> list[dict[str, str]]:
 
 
 class BaseDumper:
-    def __init__(self, name: str):
-        self.dump_path = f"../Data/{timestamp}/{name}"
-        self.logger = logging.getLogger(f"sniffgalon.{name.lower()}")
+    name: str
+    path: str  # the "area" part of the URL that'll be used for requests
+    dump_path: str
+    logger: logging.Logger
+    client: httpx.Client
+    dict_key: str
+    dump_raw: bool
+    dump_processed: bool
+    override_index_endpoint: str | None = None
+    override_key_name: str | None = None
+    request_count: int = 0
+    object_class: object | None = None
+
+    @classmethod
+    def new(
+        cls,
+        name: str,
+        path: str,
+        dump_raw: bool = False,
+        dump_processed: bool = False,
+        override_index_endpoint: str | None = None,
+        override_key_name: str | None = None,
+        object_class: object | None = None,
+    ):
+        dump_path = f"../Data/{timestamp}/{name}"
+        logger = logging.getLogger(f"sniffgalon.{name.lower()}")
 
         access_token = get_access_token()
 
-        self.client = httpx.Client(
+        client = httpx.Client(
             http2=True,
             headers=get_headers(access_token, BattleNetNamespace.STATIC),
         )
 
-        self.request_count = 0
+        dumper = cls()
+        dumper.name = name
+        dumper.path = path
+        dumper.dump_path = dump_path
+        dumper.logger = logger
+        dumper.client = client
+
+        dumper.override_key_name = override_key_name
+        dumper.dict_key = dumper.override_key_name or dumper.name.lower()
+
+        dumper.dump_raw = dump_raw
+        dumper.dump_processed = dump_processed
+        dumper.override_index_endpoint = override_index_endpoint
+
+        if not dumper.object_class:
+            dumper.object_class = object_class
+
+        return dumper
+
+    def fetch_index(
+        self, override_dict_key: str | None = None
+    ) -> list[dict[str, str]] | None:
+        self.logger.info(f"Fetching {self.name} index...")
+
+        if self.override_index_endpoint:
+            url = f"{API_URL}{self.override_index_endpoint}"
+        else:
+            url = f"{API_URL}/{self.path}/index"
+
+        response = self.client.get(url)
+
+        if response.status_code != 200:
+            self.logger.error(
+                f"Error occurred fetching {self.name} index with code {response.status_code}"
+            )
+            return
+
+        self.request_count += 1
+        data = response.json()
+
+        if self.dump_raw:
+            file_name = f"{self.dump_path}/Raw/{self.name}_Index.json"
+            dump_json(file_name, data)
+
+        key = override_dict_key or self.dict_key
+        processed = compress_generic_dict(data[key])
+
+        if self.dump_processed:
+            file_name = f"{self.dump_path}/Processed/{self.name}_Index.csv"
+            dump_csv(file_name, processed)
+
+        return processed
+
+    def fetch_specific(self, id: int):
+        if not self.object_class:
+            self.logger.error(f"No object_class set for {self.name} dumper.")
+            return
+
+        self.logger.info(f"Fetching {self.name} with ID {id}...")
+
+        url = f"{API_URL}/{self.path}/{id}"
+        response = self.client.get(url)
+
+        if response.status_code != 200:
+            self.logger.error(
+                f"Failed to fetch {self.name} ID {id} with code {response.status_code}"
+            )
+            return
+
+        self.request_count += 1
+        data = response.json()
+
+        if self.dump_raw:
+            file_name = f"{self.dump_path}/Specific/{self.name}_{id}.json"
+            dump_json(file_name, data)
+
+        return self.object_class.from_json(data)
+
+    def fetch_many(self, ids: list[int]):
+        all_results = [self.fetch_specific(id=id) for id in ids]
+        return all_results
+
+    def fetch_all(self):
+        return self.fetch_index()
