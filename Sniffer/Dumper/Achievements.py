@@ -1,6 +1,5 @@
 import os
 
-from typing import override
 from dataclasses import dataclass, asdict
 
 from .Shared import LOCALE, BaseDumper, dump_json, dump_csv, compress_generic_dict
@@ -135,7 +134,6 @@ class AchievementDumper(BaseDumper):
 
         return all_achievements
 
-    @override
     def fetch_all(self):
         return self.get_all_achievements()
 
