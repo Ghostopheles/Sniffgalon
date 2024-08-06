@@ -85,6 +85,16 @@ class Dumpers:
             )
         )
         self.add_dumper(
+            BaseDumper.new(
+                name="ItemAppearanceSet",
+                path="item-appearance",
+                dump_raw=True,
+                dump_processed=True,
+                override_key_name="appearance_sets",
+                override_index_endpoint="/item-appearance/set/index",
+            )
+        )
+        self.add_dumper(
             AchievementDumper.new(
                 name="Achievements",
                 path="achievement",
