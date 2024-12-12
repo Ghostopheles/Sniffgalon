@@ -79,9 +79,8 @@ def get_access_token() -> str:
     with httpx.Client(http2=True) as client:
         try:
             response = client.post(API_TOKEN_URL, headers=headers, data=body)
-        except Exception as exc:
-            __logger.error("Encountered an error during authentication")
-            __logger.error(exc)
+        except Exception:
+            __logger.error("Encountered an error during authentication", exc_info=True)
             return
 
         if response.status_code == 200:
